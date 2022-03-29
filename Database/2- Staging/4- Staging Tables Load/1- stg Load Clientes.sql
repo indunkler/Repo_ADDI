@@ -1,11 +1,12 @@
 USE [DB_STAGE]
+GO
 
+/****** Object:  StoredProcedure [dbo].[stg_load_clients]    Script Date: 29/3/2022 16:39:35 ******/
 SET ANSI_NULLS ON
 GO
 
 SET QUOTED_IDENTIFIER ON
 GO
-
 
 DROP PROCEDURE IF EXISTS [dbo].[stg_load_clients]
 GO
@@ -73,7 +74,7 @@ BEGIN
       		   SELECT NEXT VALUE FOR [dbo].[seq_Cliente] [cliente_sk_id], *
 			   FROM
        			 ( SELECT DISTINCT 
-       			  A.client_id as cliente_src_id,
+       			  substring(A.client_id,0,37)  as cliente_src_id,
 				  A.cupo_state as cupo_state,
 				  A.remaining_cupo as remaining_cupo
        			 ,getdate() AS [fecha_desde]
@@ -87,6 +88,36 @@ BEGIN
 									WHERE Z.[cliente_src_id] = X.[cliente_src_id] 								  
 									AND Z.fecha_hasta IS NULL
 								   )
+
+			-- Inserta los datos modificados / nuevos de la master
+    	   INSERT INTO [DB_STAGE].[dbo].[stg_clients]
+       			 ([cliente_sk_id]
+       			 ,[cliente_src_id]
+       			 ,[cupo_state]
+				 ,[remaining_cupo]
+       			 ,[fecha_desde]
+				 ,[fecha_hasta]
+				 ,[usr_ult_act]
+				 ,[fec_ult_act]
+      		   )
+      		   SELECT NEXT VALUE FOR [dbo].[seq_Cliente] [cliente_sk_id], *
+			   FROM
+       			 ( SELECT DISTINCT 
+       			  A.prospect_id as cliente_src_id
+				  ,'-1'  as cupo_state
+				  ,0  as remaining_cupo
+       			 ,getdate() AS [fecha_desde]
+       			 ,null AS [FechaHasta]
+       			 ,SYSTEM_USER AS [usr_ult_act]
+       			 ,getdate() AS [fec_ult_act]
+       			 FROM [DB_SOURCE].[dbo].[SRC_Applications]  A
+       			   ) P
+				 WHERE NOT EXISTS (SELECT 1 
+									 FROM [dbo].[stg_clients] Z  
+									WHERE Z.[cliente_src_id] = P.[cliente_src_id] 								  
+									)
+
+					
  
     
             COMMIT TRANSACTION
@@ -113,3 +144,5 @@ END
 
 
 GO
+
+

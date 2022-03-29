@@ -68,7 +68,9 @@ BEGIN
 									WHERE Z.[loan_src_id] = X.[loan_src_id] 								  
 									AND Z.fecha_hasta IS NULL
 								   )
- 
+
+
+		
     
             COMMIT TRANSACTION
        END TRY
